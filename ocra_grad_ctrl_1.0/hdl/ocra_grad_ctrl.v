@@ -123,6 +123,7 @@ module ocra_grad_ctrl #
    wire 				      oc1_data_valid = data_valid[0], gpa_fhdo_data_valid = data_valid[1];
    wire [5:0] 				      spi_clk_div;
    wire 				      clk = s00_axi_aclk; // alias
+   wire [15:0] 				      fhd_adc; // ADC data from GPA-FHDO
 
    // for the ocra1, data can be written even while it's outputting to
    // SPI - for the fhd, this isn't the case. So don't use the
@@ -162,6 +163,7 @@ module ocra_grad_ctrl #
 		   .offset_i({2'd0, grad_bram_offset_i}),
 		   .data_enb_i(grad_bram_enb_i),
 		   .serial_busy_i(fhd_busy),
+		   .adc_i(fhd_adc),
 		   .data_lost_i(oc1_data_lost),
 		   .data_o(data),
 		   .valid_o(data_valid),
@@ -193,6 +195,7 @@ module ocra_grad_ctrl #
 			       .fhd_sdo_o	(fhd_sdo_o),
 			       .fhd_csn_o	(fhd_ssn_o),
 			       .busy_o		(fhd_busy),
+			       .adc_value_o	(fhd_adc),
 			       // Inputs
 			       .clk		(clk),
 			       .data_i		(data),

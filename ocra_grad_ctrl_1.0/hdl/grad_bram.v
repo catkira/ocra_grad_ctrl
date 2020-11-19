@@ -52,6 +52,7 @@ module grad_bram #
     input 				 data_enb_i, // enable data outputs (i.e. run gradient waveforms)
     input 				 serial_busy_i, // serialiser/s still busy with last data output, cannot accept more
     input 				 data_lost_i, // serialiser/s have lost some data
+    input [15:0] 			 adc_i, // ADC data from GPA-FHDO
     output reg [31:0] 			 data_o, // Gradient data
     output reg [3:0] 			 valid_o, // Gradient data valid; 4 bits for different potential serialisers
     output [5:0] 			 spi_clk_div_o,

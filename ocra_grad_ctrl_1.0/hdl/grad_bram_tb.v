@@ -50,6 +50,7 @@ module grad_bram_tb;
    reg [C_S_AXI_DATA_WIDTH-1:0] S_AXI_WDATA;	// To UUT of grad_bram.v
    reg [(C_S_AXI_DATA_WIDTH/8)-1:0] S_AXI_WSTRB;// To UUT of grad_bram.v
    reg			S_AXI_WVALID;		// To UUT of grad_bram.v
+   reg [15:0]		adc_i;			// To UUT of grad_bram.v
    reg			data_enb_i;		// To UUT of grad_bram.v
    reg			data_lost_i;		// To UUT of grad_bram.v
    reg [15:0]		offset_i;		// To UUT of grad_bram.v
@@ -304,6 +305,7 @@ module grad_bram_tb;
 		 .data_enb_i		(data_enb_i),
 		 .serial_busy_i		(serial_busy_i),
 		 .data_lost_i		(data_lost_i),
+		 .adc_i			(adc_i[15:0]),
 		 .S_AXI_ACLK		(S_AXI_ACLK),
 		 .S_AXI_ARESETN		(S_AXI_ARESETN),
 		 .S_AXI_AWADDR		(S_AXI_AWADDR[C_S_AXI_ADDR_WIDTH-1:0]),

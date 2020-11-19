@@ -168,14 +168,20 @@ module ocra_grad_ctrl_tb;
       #10 rd32(16'd0, {22'd0, 10'd303});
       rd32(16'd4, {26'd0, 6'd30});
       rd32(16'd8, 32'h00000001);
-      rd32(16'd12, 32'habcd0123);
+      rd32(16'd12, 32'h00abcdef);
       rd32(16'd16, 32'd0);
       
-      // BRAM writes, DAC init words (
-      // wr32(16'h8000, {8'd0, 1'd0, 24'h200002});
-      // wr32(16'h8004, {8'd1, 1'd0, 24'h200002});
-      // wr32(16'h8008, {8'd2, 1'd0, 24'h200002});
-      // wr32(16'h800c, {8'd3, 1'd1, 24'h200002});
+      // Direct writes, DAC init words
+      wr32(16'd12, {8'd0, 1'd0, 24'h200002});
+      wr32(16'd12, {8'd1, 1'd0, 24'h200002});
+      wr32(16'd12, {8'd2, 1'd0, 24'h200002});
+      wr32(16'd12, {8'd3, 1'd1, 24'h200002});
+
+      // Direct writes, DAC initial outputs
+      #10000 wr32(16'd12, {8'd0, 1'd0, 4'h1, 18'd1234, 2'd0});
+      wr32(16'd12, {8'd1, 1'd0, 4'h1, 18'd2345, 2'd0});
+      wr32(16'd12, {8'd2, 1'd0, 4'h1, 18'd3456, 2'd0});
+      wr32(16'd12, {8'd3, 1'd1, 4'h1, 18'd4567, 2'd0});
 
       // BRAM writes on all 4 channels, no extra waits, sustained
       // update interval of 4 * 3070 ns = 12280 ns (clock of 10ns
@@ -329,22 +335,25 @@ module ocra_grad_ctrl_tb;
    // DAC output checks at specific times
    integer n, p;
    initial begin
-      #32605 check_ocra1(0,0,0,0);
+      check_ocra1(0, 0, 0, 0);
+      #42845 check_ocra1(1234, 2345, 3456, 4567); // written directly
       #10 for (n = 0; n < 20; n = n + 4) begin
-	 check_ocra1(n, n+1, n+2, n+3); #12280; // TODO figure out timing discrepancy, 12280 vs 12300 depending on number of updates?
+	 check_ocra1(n, n+1, n+2, n+3); #12280;
       end
       check_ocra1(1000, 1001, 1002, 1003); #12280;
       check_ocra1(1004, 1001, 1005, 1003); #12280;
       check_ocra1(1006, 1001, 1007, 1003); #12280;
       check_ocra1(1008, 1001, 1009, 1003);
 
-      #16240 check_ocra1(2000, 2001, 2002, 2003); #12300;
-      check_ocra1(2000, 2004, 2002, 2005); #12300;
-      check_ocra1(2000, 2006, 2002, 2007); #12300;
+      #14840 check_ocra1(1008, 1001, 1009, 1003);
+      #10 check_ocra1(2000, 2001, 2002, 2003); #12280;
+      check_ocra1(2000, 2004, 2002, 2005); #12280;
+      check_ocra1(2000, 2006, 2002, 2007); #12280;
       check_ocra1(2000, 2008, 2002, 2009);
 
-      #16240 check_ocra1(3000, 3001, 3002, 3003); #12300;
-      check_ocra1(3000, 3001, 3004, 3003); #12300;
+      #16230 check_ocra1(2000, 2008, 2002, 2009);
+      #10 check_ocra1(3000, 3001, 3002, 3003); #12280;
+      check_ocra1(3000, 3001, 3004, 3003); #12280;
       check_ocra1(3000, 3001, 3005, 3003); #7820;
       for (n = 3006; n < 3015; n = n + 1) begin
 	 check_ocra1(3000, 3001, n, 3003); #5000;

@@ -39,7 +39,7 @@ module gpa_fhdo_iface(
 		   input [5:0] 	spi_clk_div_i,
 		   
 		   // ADC output
-		   output reg [15:0] adc_value,
+		   output reg [15:0] adc_value_o,
 
 		   // GPA-FHDO interface
 		   output reg 	fhd_clk_o,
@@ -186,7 +186,7 @@ module gpa_fhdo_iface(
 					fhd_csn_o <= 0 | select_adc;
 					spi_counter <= spi_counter + 1;
 					if (select_adc & (spi_counter > 15 & spi_counter < 32)) begin
-						adc_value = {adc_value[14:0],fhd_sdi_i};
+						adc_value_o = {adc_value_o[14:0],fhd_sdi_i};
 					end
 					if (spi_counter < 24) begin
 						fhd_sdo_o <= spi_output[23-spi_counter];

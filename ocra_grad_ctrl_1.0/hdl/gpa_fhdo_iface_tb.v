@@ -42,11 +42,10 @@ module gpa_fhdo_iface_tb;
 	wire			sclk;			
 	wire			sdo;			
 	wire			sdi;			
-	wire			csn;			
-	wire [17:0]		voutx;		
-	wire [17:0]		vouty;		
-	wire [17:0]		voutz;		
-	wire [17:0]		voutz2;		
+	wire			csn;
+        wire 			ncsn = !csn;
+        wire [15:0] 			adc_value_o;
+	wire [15:0] 			voutx, vouty, voutz, voutz2;
 
 	initial begin
 		$dumpfile("icarus_compile/000_gpa_fhdo_iface_tb.lxt");
@@ -64,10 +63,31 @@ module gpa_fhdo_iface_tb;
 		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC000};
 		valid_i = 1;
 		#10 valid_i = 0;
+	   
+		#80000
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC100};
+		valid_i = 1;
+		#10 valid_i = 0;
+
+		#80000
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC200};
+		valid_i = 1;
+		#10 valid_i = 0;
+
+		#80000
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC300};
+		valid_i = 1;
+		#10 valid_i = 0;
+
 		#80000
 		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC000};
 		valid_i = 1;
 		#10 valid_i = 0;
+
+		#80000
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC000};
+		valid_i = 1;
+		#10 valid_i = 0;	   
 		//
 		
 		#20000 send(5,6,7,8);
@@ -121,6 +141,7 @@ gpa_fhdo_iface UUT(
 	.fhd_sdo_o	(sdo),
 	.fhd_clk_o  (sclk),
 	.fhd_csn_o	(csn),
+	.adc_value_o(adc_value_o),
 	// Inputs		     
 	.data_i		(data_i),		
 	.valid_i	(valid_i),
@@ -128,8 +149,6 @@ gpa_fhdo_iface UUT(
 	.spi_clk_div_i	(spi_clk_div_i[5:0]));
 
 dac80504_model GPA_FHDO_DAC(
-	.sclk		(sclk),
-	/*AUTOINST*/
 	// Outputs
 	//.sdo		(sdi),			 // disconnect to not interfere with adc
 	.vout0		(voutx[15:0]),
@@ -137,17 +156,17 @@ dac80504_model GPA_FHDO_DAC(
 	.vout2		(voutz[15:0]),
 	.vout3		(voutz2[15:0]),
 	// Inputs
+	.sclk		(sclk),
 	.ldacn		(ldacn),
 	.csn		(csn),
 	.sdi		(sdo));
 	
 ads8684_model GPA_FHDO_ADC(
-	.sclk		(sclk),
-	/*AUTOINST*/
 	// Outputs
 	.sdo		(sdi),			 
 	// Inputs
-	.csn		(!csn),
+	.sclk		(sclk),
+	.csn		(ncsn),
 	.sdi		(sdo),
 	.ain_0p		(voutx[15:0]),
 	.ain_1p		(vouty[15:0]),
