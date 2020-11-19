@@ -148,7 +148,7 @@ module grad_bram #
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg1 = {26'd0, 6'd32}; // 6 LSBs: SPI clock divisor for ocra1 iface (governs SPI clock speed)
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg2 = {28'd0, 4'b1111}; // selectively enable/disable serialisers
    wire [3:0] 				      valid_enb = slv_reg2[3:0];
-   reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg3;
+   reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg3 = 0; // immediate data transfer to the serialisers
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg4 = 0; // read-only
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg5;
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg6;
@@ -244,6 +244,7 @@ module grad_bram #
    reg [31:0] grad_brams [2**OPT_MEM_ADDR_BITS-1:0]; // main BRAM; 8192 locations by default
    reg [31:0] grad_bram_wdata = 0, grad_bram_wdata_r = 0; // pipelining
    reg 	      grad_bram_wen = 0, grad_bram_wen_r = 0, grad_bram_rd = 0, grad_bram_rd_r1 = 0, grad_bram_rd_r2 = 0; // pipelining
+   reg 	      direct_wen = 0;
    reg [OPT_MEM_ADDR_BITS-1:0] grad_bram_waddr = 0, grad_bram_waddr_r = 0, grad_bram_raddr = 0, grad_bram_raddr_r = 0; // pipelining
    reg [15:0] 		       grad_bram_raddr_r2; // pipelining; purely used for status checks
    reg [31:0] 		       grad_bram_rdata = 0, grad_bram_rdata_r = 0, grad_bram_rdata_r2 = 0;
@@ -256,6 +257,7 @@ module grad_bram #
 
       // defaults and pipelining
       grad_bram_wen <= 0;
+      direct_wen <= 0;
       if (grad_bram_wen) grad_brams[grad_bram_waddr] <= grad_bram_wdata;
    
       if (slv_reg_wen) begin
@@ -269,7 +271,10 @@ module grad_bram #
 	      3'd0: slv_reg0 <= S_AXI_WDATA;
 	      3'd1: slv_reg1 <= S_AXI_WDATA;
 	      3'd2: slv_reg2 <= S_AXI_WDATA;
-	      3'd3: slv_reg3 <= S_AXI_WDATA;
+	      3'd3: begin
+		 slv_reg3 <= S_AXI_WDATA;
+		 direct_wen <= 1;
+	      end
 	      default;
 	    endcase // case (axi_addr[1:0])
 	 end
@@ -301,7 +306,7 @@ module grad_bram #
    wire       data_int_and_wait_done = data_wait_done_r && data_interval_done_p;
    reg 	      busy_error = 0, busy_error_r = 0, data_lost_error_r = 0; // latter two are latches
 
-   localparam IDLE = 0, READ = 1, BUSY = 2;
+   localparam IDLE = 0, OUTPUT = 1, BUSY = 2;
    reg [1:0]  state = IDLE;
    
    always @(posedge S_AXI_ACLK) begin
@@ -341,7 +346,7 @@ module grad_bram #
       grad_bram_rdata <= grad_brams[grad_bram_raddr_r]; // pipelined rdaddr; probably unnecessary
       grad_bram_rdata_r <= grad_bram_rdata;
       case (state)
-	READ: begin
+	OUTPUT: begin
 	   if (serial_busy_i) begin
 	      busy_error <= 1; // make sure busy ends before next cycle is meant to begin
 	   end else begin
@@ -349,13 +354,15 @@ module grad_bram #
 	   end
 	   state <= IDLE;
 	end
-	default: begin // IDLE state
-	   // if (data_interval_done_p) begin
+	default: begin // IDLE state	   
 	   if (data_int_and_wait_done) begin
-	      state <= READ;
+	      state <= OUTPUT;
 	      data_o <= grad_bram_rdata_r;
 	      data_wait_max <= {13'd0, grad_bram_rdata_r[29:27]}; // TODO: implement longer delays using grad_bram_data_r[30]
 	      grad_bram_raddr <= grad_bram_raddr + 1; // next address
+	   end else if (direct_wen) begin
+	      state <= OUTPUT;
+	      data_o <= slv_reg3;
 	   end
 	end
       endcase // case (state)
@@ -364,91 +371,6 @@ module grad_bram #
       slv_reg4 <= {14'd0, busy_error_r, data_lost_error_r, grad_bram_raddr_r2};
    end
    
-   // VN: below is left in for reference, but won't be used in its current form
-   // always @( posedge S_AXI_ACLK ) begin
-   //    if ( S_AXI_ARESETN == 1'b0 ) begin
-   // 	 slv_reg0 <= 0;
-   // 	 slv_reg1 <= 0;
-   // 	 slv_reg2 <= 0;
-   // 	 slv_reg3 <= 0;
-   // 	 slv_reg4 <= 0;
-   // 	 slv_reg5 <= 0;
-   // 	 slv_reg6 <= 0;
-   // 	 slv_reg7 <= 0;
-   //    end else begin
-   // 	 if (slv_reg_wen) begin
-   // 	    case ( axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] )
-   // 	      3'h0:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 0
-   // 	             slv_reg0[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end  
-   // 	      3'h1:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 1
-   // 	             slv_reg1[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end  
-   // 	      3'h2:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 2
-   // 	             slv_reg2[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end  
-   // 	      3'h3:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 3
-   // 	             slv_reg3[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end  
-   // 	      3'h4:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 4
-   // 	             slv_reg4[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end  
-   // 	      3'h5:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 5
-   // 	             slv_reg5[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end  
-   // 	      3'h6:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 6
-   // 	             slv_reg6[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end  
-   // 	      3'h7:
-   // 	        for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
-   // 	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-   // 	             // Respective byte enables are asserted as per write strobes 
-   // 	             // Slave register 7
-   // 	             slv_reg7[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-   // 	          end
-   // 	      default : begin
-   // 	         slv_reg0 <= slv_reg0;
-   // 	         slv_reg1 <= slv_reg1;
-   // 	         slv_reg2 <= slv_reg2;
-   // 	         slv_reg3 <= slv_reg3;
-   // 	         slv_reg4 <= slv_reg4;
-   // 	         slv_reg5 <= slv_reg5;
-   // 	         slv_reg6 <= slv_reg6;
-   // 	         slv_reg7 <= slv_reg7;
-   // 	      end
-   // 	    endcase
-   // 	 end
-   //    end
-   // end
-
    // Implement write response logic generation
    // The write response and response valid signals are asserted by the slave 
    // when axi_wready, S_AXI_WVALID, axi_wready and S_AXI_WVALID are asserted.  

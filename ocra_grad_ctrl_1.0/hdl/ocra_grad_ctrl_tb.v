@@ -161,7 +161,7 @@ module ocra_grad_ctrl_tb;
       // Carry out similar tests to those in grad_bram_tb
       #10 wr32(16'd4, {26'd0, 6'd30}); // reg 1: LSBs set SPI clock divisor
       wr32(16'd8, 32'h00000001); // reg 2: enable ocra1, but disable gpa-fhdo for now
-      wr32(16'd12, 32'habcd0123); // reg 3
+      wr32(16'd12, 32'h00abcdef); // reg 3
       wr32(16'd16, 32'h12345678); // reg 4 -- this write shouldn't do anything, since reg4 is read-only
 
       // register readback tests
@@ -171,19 +171,19 @@ module ocra_grad_ctrl_tb;
       rd32(16'd12, 32'habcd0123);
       rd32(16'd16, 32'd0);
       
-      // BRAM writes, DAC init
-      wr32(16'h8000, {8'd0, 1'd0, 24'h200002});
-      wr32(16'h8004, {8'd1, 1'd0, 24'h200002});
-      wr32(16'h8008, {8'd2, 1'd0, 24'h200002});
-      wr32(16'h800c, {8'd3, 1'd1, 24'h200002});
+      // BRAM writes, DAC init words (
+      // wr32(16'h8000, {8'd0, 1'd0, 24'h200002});
+      // wr32(16'h8004, {8'd1, 1'd0, 24'h200002});
+      // wr32(16'h8008, {8'd2, 1'd0, 24'h200002});
+      // wr32(16'h800c, {8'd3, 1'd1, 24'h200002});
 
       // BRAM writes on all 4 channels, no extra waits, sustained
       // update interval of 4 * 3070 ns = 12280 ns (clock of 10ns
       // period; for 8ns period this ends up being 9824ns, i.e. 101.7
       // ksps
-      for (k = 4; k < 100; k = k + 1) begin
+      for (k = 0; k < 100; k = k + 1) begin
 	 channel = k[1:0];
-	 broadcast = !( (k + 1) % 4); // broacast on k=7, k=11, etc
+	 broadcast = !( (k + 1) % 4); // broacast on k=3, k=7, k=11, etc
 	 wr32_oc1(k, 0, channel, broadcast, k);
       end
       
@@ -329,13 +329,13 @@ module ocra_grad_ctrl_tb;
    // DAC output checks at specific times
    integer n, p;
    initial begin
-      #44885 check_ocra1(0,0,0,0);
-      #10 for (n = 4; n < 20; n = n + 4) begin
-	 check_ocra1(n, n+1, n+2, n+3); #12300;
+      #32605 check_ocra1(0,0,0,0);
+      #10 for (n = 0; n < 20; n = n + 4) begin
+	 check_ocra1(n, n+1, n+2, n+3); #12280; // TODO figure out timing discrepancy, 12280 vs 12300 depending on number of updates?
       end
-      check_ocra1(1000, 1001, 1002, 1003); #12300;
-      check_ocra1(1004, 1001, 1005, 1003); #12300;
-      check_ocra1(1006, 1001, 1007, 1003); #12300;
+      check_ocra1(1000, 1001, 1002, 1003); #12280;
+      check_ocra1(1004, 1001, 1005, 1003); #12280;
+      check_ocra1(1006, 1001, 1007, 1003); #12280;
       check_ocra1(1008, 1001, 1009, 1003);
 
       #16240 check_ocra1(2000, 2001, 2002, 2003); #12300;

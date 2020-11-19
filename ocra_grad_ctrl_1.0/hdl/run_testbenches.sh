@@ -3,6 +3,7 @@
 
 globstat=0
 for k in ad5781_model dac80504_model gpa_fhdo_iface grad_bram ocra1_iface ocra_grad_ctrl; do
+    echo "Testing $k"
     iverilog -o icarus_compile/000_$k.compiled $k.v -Wall
     if [ $? -ne 0 ]; then globstat=1; fi
     iverilog -o icarus_compile/000_$k\_tb.compiled $k\_tb.v -Wall    

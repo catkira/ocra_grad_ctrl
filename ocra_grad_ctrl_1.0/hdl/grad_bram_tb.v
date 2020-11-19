@@ -104,8 +104,8 @@ module grad_bram_tb;
       S_AXI_BREADY = 1; // TODO: make this more fine-grained if bus reads/writes don't work properly in hardware
       #10 wr32(16'd4, {26'd0, 6'd30}); // reg 1: LSBs set SPI clock divisor
       wr32(16'd8, {28'hcafebee, valid_mask}); // reg 2; note the final F
-      wr32(16'd12, 32'habcd0123); // reg 3
-      wr32(16'd16, 32'h12345678); // reg 4 -- this write shouldn't do anything, since reg4 is read-only
+      wr32(16'd12, 32'habcd0123); // reg 3 -- this write should output the data immediately to the serialisers
+      wr32(16'd16, 32'h12345678); // reg 4 -- this write should do nothing, since reg 4 isn't implemented
 
       // register readback tests
       #10 rd32(16'd0, {22'd0, 10'd303});
@@ -144,7 +144,7 @@ module grad_bram_tb;
       // Data error blip
       #660 data_lost_i = 1;
       #10 data_lost_i = 0;
-      #10 rd32(16'd16, {16'd2, 16'd11});
+      #10 rd32(16'd16, {16'd1, 16'd11});
 
       // Simulate a 'busy' condition that stays for a while, and a data lost error at the same time
       #9000 serial_busy_i = 1; data_lost_i = 1;
@@ -154,14 +154,13 @@ module grad_bram_tb;
       // Simulate a longer 'busy' condition that will compromise the output integrity
       #10000 serial_busy_i = 1;
       #10000 serial_busy_i = 0;
-      #10 rd32(16'd16, {16'd1, 16'd21});
+      #10 rd32(16'd16, {16'd2, 16'd21});
 
       // Reset core, make sure it resumes correctly
       #500 S_AXI_ARESETN = 0;
       #10 S_AXI_ARESETN = 1;
 
       // TODO: reset behaviour in response to momentary reset isn't entirely clear.
-
 
       // Change to the part of the memory with waits
       #15000 S_AXI_ARESETN = 0;
@@ -182,7 +181,9 @@ module grad_bram_tb;
    wire [2:0] n_lsbs = n[2:0];
    initial begin
       // test readout and speed logic
-      #36405 for (n = 0; n < 9; n = n + 1) begin
+      #225 check_output(32'habcd0123);
+      
+      #36180 for (n = 0; n < 9; n = n + 1) begin
 	 check_output(n); #3070;
       end
       check_output(9); #1690; // speed up in the middle of pause
