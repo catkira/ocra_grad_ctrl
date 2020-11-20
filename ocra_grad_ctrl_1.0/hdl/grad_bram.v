@@ -151,7 +151,7 @@ module grad_bram #
    wire [3:0] 				      valid_enb = slv_reg2[3:0];
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg3 = 0; // immediate data transfer to the serialisers
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg4 = 0; // read-only
-   reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg5;
+   reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg5 = 0; // read-only, ADC data
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg6;
    reg [C_S_AXI_DATA_WIDTH-1:0] 	      slv_reg7;
    wire 				      slv_reg_rden;
@@ -305,6 +305,7 @@ module grad_bram #
    wire       data_wait_done = data_wait_cnt == data_wait_max;
    reg 	      data_wait_done_r = 0;
    wire       data_int_and_wait_done = data_wait_done_r && data_interval_done_p;
+   reg [15:0] adc_r = 0;
    reg 	      busy_error = 0, busy_error_r = 0, data_lost_error_r = 0; // latter two are latches
 
    localparam IDLE = 0, OUTPUT = 1, BUSY = 2;
@@ -319,6 +320,7 @@ module grad_bram #
       {data_interval_done_r2, data_interval_done_r} <= {data_interval_done_r, data_interval_done};
       data_interval_done_p <= !data_interval_done_r2 && data_interval_done_r; // capture posedges, to ensure it's high for only 1 cycle
       data_wait_done_r <= data_wait_done;
+      adc_r <= adc_i;
       
       // BRAM read address and delay counter logic
       if (!data_enb_i) begin
@@ -368,8 +370,9 @@ module grad_bram #
 	end
       endcase // case (state)
      
-      // Slave register 4 will contain monitoring info
-      slv_reg4 <= {14'd0, busy_error_r, data_lost_error_r, grad_bram_raddr_r2};
+      // Slave registers 4 and 5 contain monitoring info and ADC data
+      slv_reg4 <= {14'd0, busy_error_r, data_lost_error_r, grad_bram_raddr_r2};      
+      slv_reg5 <= {16'd0, adc_r};
    end
    
    // Implement write response logic generation

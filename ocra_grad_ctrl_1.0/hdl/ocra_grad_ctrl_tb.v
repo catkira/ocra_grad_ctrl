@@ -23,7 +23,7 @@
 
  `include "ocra_grad_ctrl.v"
  `include "ocra1_model.v"
- // `include "gpa_fhdo_model.v"
+ `include "gpa_fhdo_model.v"
 
  `timescale 1ns / 1ns
 
@@ -46,11 +46,10 @@ module ocra_grad_ctrl_tb;
    wire s00_axi_aresetn = rst_n;
    reg 	err; // error flag in testbench
 
-   wire [17:0] oc1_voutx, oc1_vouty, oc1_voutz, oc1_voutz2;
+   wire [17:0] oc1_voutx, oc1_vouty, oc1_voutz, oc1_voutz2, fhd_sdi_i;
    
    /*AUTOREGINPUT*/
    // Beginning of automatic reg inputs (for undeclared instantiated-module inputs)
-   reg			fhd_sdi_i;		// To UUT of ocra_grad_ctrl.v
    reg			grad_bram_enb_i;	// To UUT of ocra_grad_ctrl.v
    reg [13:0]		grad_bram_offset_i;	// To UUT of ocra_grad_ctrl.v
    reg [C_S00_AXI_ADDR_WIDTH-1:0] s00_axi_araddr;// To UUT of ocra_grad_ctrl.v
@@ -126,7 +125,6 @@ module ocra_grad_ctrl_tb;
       rst_n = 0;
       grad_bram_offset_i = 0;
       grad_bram_enb_i = 0;
-      fhd_sdi_i = 0;
 
       // Initialise bus-related I/O
       s00_axi_araddr = 0;
@@ -319,6 +317,12 @@ module ocra_grad_ctrl_tb;
       #10000 grad_bram_enb_i = 0;
       #100 rd32(16'd16, {14'd0, 2'b01, 16'h1388});
       #10 rd32(16'd16, {14'd0, 2'b00, 16'h1388});
+
+      //// SWITCH TO GPA-FHDO
+      #50000 
+	
+      // read ADC (without simulating it fully)
+      #10 rd32(16'd20, {16'd0, 16'd0});      
       ////  TODO: properly test gpa_fhdo_iface -- below is a rough busy_error test to avoid causing them
       // wr32(16'd0, 10'd400);
       // wr32(16'd4, 6'd6);
@@ -528,10 +532,10 @@ module ocra_grad_ctrl_tb;
 		      .s_axi_intr_rready(s_axi_intr_rready));
 
    ocra1_model oc1_model(// Outputs
-			 .voutx			(oc1_voutx),
-			 .vouty			(oc1_vouty),
-			 .voutz			(oc1_voutz),
-			 .voutz2		(oc1_voutz2),
+			 .voutx			(oc1_voutx[17:0]),
+			 .vouty			(oc1_vouty[17:0]),
+			 .voutz			(oc1_voutz[17:0]),
+			 .voutz2		(oc1_voutz2[17:0]),
 			 // Inputs
 			 .clk			(oc1_clk_o),
 			 .syncn			(oc1_syncn_o),
@@ -540,6 +544,17 @@ module ocra_grad_ctrl_tb;
 			 .sdoy			(oc1_sdoy_o),
 			 .sdoz			(oc1_sdoz_o),
 			 .sdoz2			(oc1_sdoz2_o));
+
+   gpa_fhdo_model fhd_model(// Outputs
+			    .sdi		(fhd_sdi_i),
+			    .voutx		(voutx[15:0]),
+			    .vouty		(vouty[15:0]),
+			    .voutz		(voutz[15:0]),
+			    .voutz2		(voutz2[15:0]),
+			    // Inputs
+			    .clk		(fhd_clk_o),
+			    .csn		(fhd_ssn_o),
+			    .sdo		(fhd_sdo_o));
 
    // Wires purely for debugging (since GTKwave can't access a single RAM word directly)
    wire [31:0] bram_a0 = UUT.grad_bram_inst.grad_brams[0],

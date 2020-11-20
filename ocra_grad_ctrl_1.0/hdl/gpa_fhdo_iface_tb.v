@@ -56,36 +56,41 @@ module gpa_fhdo_iface_tb;
 		data_i = 0;
 		valid_i = 0;
 		spi_clk_div_i = 32;
-
-		#100 send(1,2,3,4);
-		// read adc
+	   
+		#1000 send(1,2,3,4);
+		#20000 send(-1,-2,-3,-4);	   
+	   
+		// read adc -- each read obtains the value from the previous read command
+		//
+		// (i.e. reading ch0, ch1, ch2, ch3, ch0 will return
+		// undefined, ch0, ch1, ch2, ch3 data
 		#80000
-		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC000};
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC00000};
 		valid_i = 1;
 		#10 valid_i = 0;
 	   
 		#80000
-		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC100};
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC10000};
 		valid_i = 1;
 		#10 valid_i = 0;
 
 		#80000
-		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC200};
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC20000};
 		valid_i = 1;
 		#10 valid_i = 0;
 
 		#80000
-		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC300};
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC30000};
 		valid_i = 1;
 		#10 valid_i = 0;
 
 		#80000
-		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC000};
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC00000};
 		valid_i = 1;
 		#10 valid_i = 0;
 
 		#80000
-		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC000};
+		#10 data_i = {5'b01000, 2'd0, 1'd0, 24'hC00000};
 		valid_i = 1;
 		#10 valid_i = 0;	   
 		//
@@ -93,39 +98,39 @@ module gpa_fhdo_iface_tb;
 		#20000 send(5,6,7,8);
 
 		// VN: some manual tests, max throughput
-		#20000 data_i = {5'd0, 2'd0, 1'd0, 24'ha}; valid_i = 1; #10 valid_i = 0;
-		#160 wait(!busy_o);
-		#10 data_i = {5'd0, 2'd1, 1'd0, 24'hb}; valid_i = 1; #10 valid_i = 0;
+		#20000 data_i = {5'd0, 2'd0, 1'd0, 8'h08, 16'ha}; valid_i = 1; #10 valid_i = 0;
 		#320 wait(!busy_o);
-		#10 data_i = {5'd0, 2'd2, 1'd0, 24'hc}; valid_i = 1; #10 valid_i = 0;
+		#10 data_i = {5'd0, 2'd1, 1'd0, 8'h09, 16'hb}; valid_i = 1; #10 valid_i = 0;
 		#320 wait(!busy_o);
-		#10 data_i = {5'd0, 2'd3, 1'd0, 24'hd}; valid_i = 1; #10 valid_i = 0;
+		#10 data_i = {5'd0, 2'd2, 1'd0, 8'h0a, 16'hc}; valid_i = 1; #10 valid_i = 0;
 		#320 wait(!busy_o);
-		#10 data_i = {5'd0, 2'd0, 1'd0, 24'he}; valid_i = 1; #10 valid_i = 0;
+		#10 data_i = {5'd0, 2'd3, 1'd0, 8'h0b, 16'hd}; valid_i = 1; #10 valid_i = 0;
 		#320 wait(!busy_o);
-		#10 data_i = {5'd0, 2'd1, 1'd0, 24'hf}; valid_i = 1; #10 valid_i = 0;
+		#10 data_i = {5'd0, 2'd0, 1'd0, 8'h08, 16'he}; valid_i = 1; #10 valid_i = 0;
 		#320 wait(!busy_o);
-		#10 data_i = {5'd0, 2'd2, 1'd0, 24'h10}; valid_i = 1; #10 valid_i = 0;
+		#10 data_i = {5'd0, 2'd1, 1'd0, 8'h09, 16'hf}; valid_i = 1; #10 valid_i = 0;
 		#320 wait(!busy_o);
-		#10 data_i = {5'd0, 2'd3, 1'd0, 24'h11}; valid_i = 1; #10 valid_i = 0;
+		#10 data_i = {5'd0, 2'd2, 1'd0, 8'h0a, 16'h10}; valid_i = 1; #10 valid_i = 0;
+		#320 wait(!busy_o);
+		#10 data_i = {5'd0, 2'd3, 1'd0, 8'h0b, 16'h11}; valid_i = 1; #10 valid_i = 0;
 
 		#20000 $finish;
 	end // initial begin
 
 	task send; // send data to OCRA1 interface core
-	input [23:0] inx, iny, inz, inz2;
+	input [15:0] inx, iny, inz, inz2;
 	begin
 		// TODO: perform a check to see whether the busy line is set before trying to send data
-		#10 data_i = {5'd0, 2'd0, 1'd0, inx};
+		#10 data_i = {5'd0, 2'd0, 1'd0, 6'h02, 2'd0, inx};
 		valid_i = 1;
 		#10 valid_i = 0;
-		#80000 data_i = {5'd0, 2'd1, 1'd0, iny};
+		#80000 data_i = {5'd0, 2'd1, 1'd0, 6'h02, 2'd1, iny};
 		valid_i = 1;
-		#20000 valid_i = 0;
-		#80000 data_i = {5'd0, 2'd2, 1'd0, inz};
+		#10 valid_i = 0;
+		#80000 data_i = {5'd0, 2'd2, 1'd0, 6'h02, 2'd2, inz};
 		valid_i = 1;
 		#10 valid_i = 0; 	 
-		#80000 data_i = {5'd0, 2'd3, 1'd1, inz2};
+		#80000 data_i = {5'd0, 2'd3, 1'd1, 6'h02, 2'd3, inz2};
 		valid_i = 1;
 		#10 valid_i = 0;
 	end

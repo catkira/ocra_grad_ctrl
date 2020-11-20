@@ -100,6 +100,7 @@ module grad_bram_tb;
       offset_i = 0;
       serial_busy_i = 0;
       data_lost_i = 0;
+      adc_i = 16'hbeef;
 
       #107 S_AXI_ARESETN = 1; // extra 7ns to ensure that TB stimuli occur a bit before the positive clock edges
       S_AXI_BREADY = 1; // TODO: make this more fine-grained if bus reads/writes don't work properly in hardware
@@ -114,6 +115,7 @@ module grad_bram_tb;
       rd32(16'd8, 32'hcafebeef);
       rd32(16'd12, 32'habcd0123);
       rd32(16'd16, 32'd0);
+      rd32(16'd20, {16'h0, 16'hbeef}); // read ADC input value
 
       // BRAM writes, no delays
       for (k = 0; k < 1000; k = k + 1) begin
@@ -184,7 +186,7 @@ module grad_bram_tb;
       // test readout and speed logic
       #225 check_output(32'habcd0123);
       
-      #36180 for (n = 0; n < 9; n = n + 1) begin
+      #36230 for (n = 0; n < 9; n = n + 1) begin
 	 check_output(n); #3070;
       end
       check_output(9); #1690; // speed up in the middle of pause
