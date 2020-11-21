@@ -180,25 +180,25 @@ module gpa_fhdo_iface(
 		end
 	end
 
-	// Output Logic
+   // Output Logic
    always @(posedge clk) begin
 		if(div_ctr == 0) begin
 			case(state)
 				IDLE: begin
 					busy_o <= 0;
-					fhd_csn_o <= 1;
+					fhd_csn_o <= !select_adc;
 					spi_counter <= 0;
 					fhd_clk_o <= 0;
 					end
 				START_SPI: begin
 					busy_o <= 1;
-					fhd_csn_o <= 1 & (!select_adc);
+					fhd_csn_o <= !select_adc;
 					spi_counter <= 0;
 					fhd_clk_o <= 0;
 				   end
 				OUTPUT_SPI: begin
 					fhd_clk_o <= 1;
-					fhd_csn_o <= 0 | select_adc;
+					fhd_csn_o <= select_adc;
 					spi_counter <= spi_counter + 1;
 					if (select_adc & (spi_counter > 15 & spi_counter < 32)) begin
 						adc_value_o <= {adc_value_o[14:0],fhd_sdi_i};
@@ -212,13 +212,13 @@ module gpa_fhdo_iface(
 				   end
 				END_SPI: begin
 					fhd_sdo_o <= 0;
-					fhd_csn_o <= 1 & (!select_adc);
+					fhd_csn_o <= !select_adc;
 				end
 				default: begin // should never happen
 					busy_o <= 0;
-					fhd_csn_o <= 1;
+					fhd_csn_o <= !select_adc;
 					spi_counter <= 0;
-					fhd_csn_o <= 1;				
+				   fhd_clk_o <= 0;
 				end
 			  endcase
 		  end
